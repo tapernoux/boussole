@@ -1,0 +1,265 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Decision Compass</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+      padding: 20px;
+      margin: 0;
+    }
+    h1, h2, h3 {
+      text-align: center;
+    }
+    .center {
+      text-align: center;
+      margin: 20px 0;
+    }
+    select, input, button {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      margin: 10px 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #007BFF;
+      color: white;
+      border: none;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    .gauge-bar {
+      height: 20px;
+      border-radius: 10px;
+      background: linear-gradient(to right, red, orange, yellow, green);
+      position: relative;
+      overflow: hidden;
+      margin: 8px 0;
+    }
+    .gauge-fill {
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      position: absolute;
+      top: 0;
+      right: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🧭 Decision Compass</h1>
+
+  <div class="center">
+    <label for="numOptions">How many scenarios do you want to evaluate?</label>
+    <select id="numOptions">
+      <option value="1">1</option>
+      <option value="2" selected>2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+    </select>
+    <button onclick="initInputs()">Continue</button>
+  </div>
+
+  <div id="inputsArea" style="display:none;">
+    <h3>Enter scenario titles</h3>
+    <div id="inputFields"></div>
+    <div class="center">
+      <button onclick="generateQuestions()">Start</button>
+    </div>
+  </div>
+
+  <div id="questionsArea" style="display:none;">
+    <h3 class="center">Evaluate each scenario</h3>
+    <div id="questionsContainer"></div>
+    <div class="center">
+      <button onclick="showResults()">See my results</button>
+    </div>
+    <div id="resultsArea"></div>
+    <div class="center" style="margin-top: 30px;">
+      <canvas id="radarChart" width="400" height="400"></canvas>
+    </div>
+    <div id="recommendation" class="center" style="margin-top: 30px; font-size: 18px; font-weight: bold;"></div>
+  </div>
+
+  
+  
+  
+  <script>
+    let num = 0;
+    let names = [];
+    const questions = [
+      "Will I be free to be myself and feel aligned with who I am?",
+      "Will I be able to express creativity and bring new ideas?",
+      "Will I contribute to something that makes sense for me?",
+      "Will I feel intellectually stimulated or learn something?",
+      "Will I be energized by the people around me?",
+      "Will I laugh and keep a sense of lightness in my daily life?",
+      "Will I be able to make an impact, even small?",
+      "Will I feel useful or valued in this situation?",
+      "Will I be able to explore, test, experiment?",
+      "Will I be able to share or transmit something meaningful?"
+    ];
+    const motivationLabels = [
+      "Authenticity", "Creativity", "Meaning", "Discovery", "People",
+      "Lightness", "Impact", "Recognition", "Exploration", "Sharing"
+    ];
+
+    function initInputs() {
+      num = parseInt(document.getElementById("numOptions").value);
+      const area = document.getElementById("inputsArea");
+      const container = document.getElementById("inputFields");
+      area.style.display = "block";
+      container.innerHTML = "";
+      for (let i = 0; i < num; i++) {
+        container.innerHTML += `<input type="text" id="q${i}" placeholder="Scenario name ${i+1}">`;
+      }
+    }
+
+    function generateQuestions() {
+      names = [];
+      for (let i = 0; i < num; i++) {
+        const val = document.getElementById("q" + i).value.trim();
+        names.push(val || "Scenario " + (i + 1));
+      }
+      document.getElementById("questionsArea").style.display = "block";
+      const container = document.getElementById("questionsContainer");
+      container.innerHTML = "";
+
+      questions.forEach((q, i) => {
+        let html = `<div class="card"><p><strong>${q}</strong></p>`;
+        for (let j = 0; j < num; j++) {
+          html += `
+            <label>${names[j]}</label>
+            <select id="r${i}_${j}">
+              <option value="5">5 - Absolutely</option>
+              <option value="4">4 - Mostly yes</option>
+              <option value="3">3 - Neutral</option>
+              <option value="2">2 - Mostly no</option>
+              <option value="1">1 - Not at all</option>
+              <option value="-1">Not applicable</option>
+            </select>
+          `;
+        }
+        html += "</div>";
+        container.innerHTML += html;
+      });
+    }
+
+    function showResults() {
+      const results = [];
+      for (let j = 0; j < num; j++) {
+        let total = 0;
+        let count = 0;
+        for (let i = 0; i < questions.length; i++) {
+          const val = parseInt(document.getElementById(`r${i}_${j}`).value);
+          if (val > 0) {
+            total += val;
+            count++;
+          }
+        }
+        const score = (total / (count * 5)) * 10;
+        results.push({ name: names[j], score: parseFloat(score.toFixed(1)) });
+      }
+
+      let html = "<h3 class='center'>Results</h3><div>";
+      results.forEach(r => {
+        const percent = r.score / 10;
+        html += `
+          <div style="margin-bottom: 10px;">
+            <strong>${r.name}:</strong> ${r.score} / 10
+            <div class="gauge-bar" style="background: #ddd; border-radius: 10px; overflow: hidden; height: 20px;">
+              <div style="width: ${percent * 100}%; height: 100%; background: linear-gradient(to right, red, orange, yellow, green); border-radius: 10px 0 0 10px;"></div>
+            </div>
+          </div>
+        `;
+      });
+      html += "</div>";
+      document.getElementById("resultsArea").innerHTML = html;
+
+      const topScore = Math.max(...results.map(r => r.score));
+      const topResults = results.filter(r => r.score === topScore);
+      const recoEl = document.getElementById("recommendation");
+      if (topResults.length === 1) {
+        recoEl.innerHTML = `
+          🌟 <strong>Your best-aligned scenario:</strong><br><br>
+          ✅ <strong>“${topResults[0].name}”</strong><br><br>
+          This scenario stands out as the most aligned with your intrinsic motivations. 
+          It resonates strongly with what gives you energy, meaning, and personal satisfaction.<br><br>
+          Choosing this path could foster a sense of flow, purpose, and authentic expression in your daily life.
+        `;
+      } else {
+        const names = topResults.map(r => `<strong>${r.name}</strong>`).join(" and ");
+        recoEl.innerHTML = `
+          🤝 <strong>You are equally aligned with:</strong> ${names}<br><br>
+          These scenarios score equally high in terms of your internal compass. 
+          To decide, try asking yourself:<br>
+          • Which one sparks more joy or energy?<br>
+          • Where do you feel most at peace or excited?<br><br>
+          Sometimes, the final answer is not analytical — it’s felt. Let your intuition guide you. 🌱
+        `;
+      }
+
+      const radarDatasets = results.map((res, j) => {
+        const data = [];
+        for (let i = 0; i < questions.length; i++) {
+          const val = parseInt(document.getElementById(`r${i}_${j}`).value);
+          data.push(val > 0 ? val : 0);
+        }
+        const colors = [
+          ["rgba(54, 162, 235, 0.2)", "rgba(54, 162, 235, 1)"],
+          ["rgba(255, 99, 132, 0.2)", "rgba(255, 99, 132, 1)"],
+          ["rgba(255, 206, 86, 0.2)", "rgba(255, 206, 86, 1)"],
+          ["rgba(75, 192, 192, 0.2)", "rgba(75, 192, 192, 1)"]
+        ];
+        return {
+          label: res.name,
+          data: data,
+          fill: true,
+          backgroundColor: colors[j % colors.length][0],
+          borderColor: colors[j % colors.length][1],
+          borderWidth: 2
+        };
+      });
+
+      const ctx = document.getElementById("radarChart").getContext("2d");
+      new Chart(ctx, {
+        type: "radar",
+        data: {
+          labels: motivationLabels,
+          datasets: radarDatasets
+        },
+        options: {
+          responsive: true,
+          scales: {
+            r: {
+              suggestedMin: 0,
+              suggestedMax: 5,
+              ticks: {
+                stepSize: 1
+              }
+            }
+          }
+        }
+      });
+    }
+  </script>
+
+
+
+</body>
+</html>
